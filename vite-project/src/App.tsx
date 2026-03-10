@@ -540,7 +540,7 @@ export default function DeliveryApp() {
     <div className="min-h-screen bg-zinc-950 font-sans pb-24 text-zinc-100 selection:bg-yellow-500/30">
       
       {toastMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-green-500 text-white px-5 py-3 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2 animate-in slide-in-from-top fade-in duration-300 border-2 border-green-400">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-100 bg-green-500 text-white px-5 py-3 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2 animate-in slide-in-from-top fade-in duration-300 border-2 border-green-400">
           <BellRing size={18} className="animate-bounce" /> {toastMessage}
         </div>
       )}
