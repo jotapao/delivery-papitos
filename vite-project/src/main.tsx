@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom/client';
 import { initializeApp, getApps, getApp } from "firebase/app";
+import './index.css';
 import { getFirestore, collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { 
   getAuth, 
@@ -862,3 +864,10 @@ export default function DeliveryApp() {
     </div>
   );
 }
+
+// ADICIONADO: Código de renderização do React
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    <DeliveryApp />
+  </React.StrictMode>
+);
