@@ -121,8 +121,7 @@ const MENU_ITEMS: Product[] = [
   { id: 22, name: 'X Mignon Bacon Simples', price: 26.00, category: 'Filé Mignon', desc: 'Pão, Filé, Bacon, Presunto, Mussarela, Milho, Batata, Alface e Tomate.', image: 'https://images.unsplash.com/photo-1603064750555-408eab413e14?auto=format&fit=crop&w=500&q=60' },
   { id: 23, name: 'X Mignon Especial', price: 24.00, category: 'Filé Mignon', desc: 'Pão, Filé, Ovo, Presunto, Mussarela, Milho, Batata, Alface e Tomate.', image: 'https://images.unsplash.com/photo-1603064750555-408eab413e14?auto=format&fit=crop&w=500&q=60' },
   { id: 24, name: 'X Mignon Simples', price: 22.00, category: 'Filé Mignon', desc: 'Pão, Filé, Mussarela, Milho, Batata, Alface e Tomate.', image: 'https://images.unsplash.com/photo-1603064750555-408eab413e14?auto=format&fit=crop&w=500&q=60' },
-  { id: 25, name: 'X Frango (Pão Sírio)', price: 36.00, category: 'Pão Sírio', desc: 'Pão sírio no prato, filé de frango, mussarela, milho, alface e tomate.', image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=500&q=60' },
-  { id: 26, name: 'X Filé Mignon (Pão Sírio)', price: 40.00, category: 'Pão Sírio', desc: 'Pão sírio no prato, filé mignon, mussarela, milho, alface e tomate.', image: 'https://images.unsplash.com/photo-1561651823-34958019cd2a?auto=format&fit=crop&w=500&q=60' },
+{ id: 25, name: 'X Frango (Pão Sírio)', price: 36.00, category: 'Pão Sírio', desc: 'Pão sírio no prato, filé de frango, mussarela, milho, alface e tomate.', image: '/sirio.jpg' },  { id: 26, name: 'X Filé Mignon (Pão Sírio)', price: 40.00, category: 'Pão Sírio', desc: 'Pão sírio no prato, filé mignon, mussarela, milho, alface e tomate.', image: 'https://images.unsplash.com/photo-1561651823-34958019cd2a?auto=format&fit=crop&w=500&q=60' },
   { id: 27, name: 'Misto Quente', price: 13.00, category: 'Diversos', desc: 'Pão, presunto e mussarela.', image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=500&q=60' },
   { id: 28, name: 'X Dog Simples', price: 20.00, category: 'Diversos', desc: 'Pão, ovo, 2 salsichas, presunto, mussarela, milho, batata, alface e tomate.', image: 'https://images.unsplash.com/photo-1612392062631-94dd85fa2dd0?auto=format&fit=crop&w=500&q=60' },
   { id: 29, name: 'X Dog Bacon', price: 21.00, category: 'Diversos', desc: 'Pão, ovo, salsicha, bacon, presunto, mussarela, milho, batata, alface e tomate.', image: 'https://images.unsplash.com/photo-1612392062631-94dd85fa2dd0?auto=format&fit=crop&w=500&q=60' },
@@ -237,19 +236,30 @@ export default function DeliveryApp() {
       fetchedOrders.forEach(order => {
         const prevStatus = prevStatuses.current[order.id!];
         
-        if (prevStatus && prevStatus !== order.status) {
+        if (!prevStatus) {
+          prevStatuses.current[order.id!] = order.status;
+          return;
+        }
+
+        if (prevStatus !== order.status) {
           playNotificationSound();
           
           let statusText = '';
-          if (order.status === 'preparing') statusText = 'Seu pedido começou a ser preparado!';
-          if (order.status === 'done') statusText = 'Seu pedido está pronto / saiu para entrega!';
-          if (order.status === 'ready') statusText = 'Pedido finalizado. Bom apetite!';
+          if (order.status === 'accepted') statusText = 'O seu pedido foi aceite pela loja!';
+          else if (order.status === 'preparing') statusText = 'O seu pedido começou a ser preparado!';
+          else if (order.status === 'dispatched' || order.status === 'done') statusText = 'O seu pedido saiu para entrega!';
+          else if (order.status === 'delivered' || order.status === 'ready') statusText = 'Pedido entregue. Bom apetite!';
+          else if (order.status === 'canceled') statusText = 'O seu pedido foi cancelado pela loja.';
           
-          setToastMessage(statusText);
-          setTimeout(() => setToastMessage(''), 5000);
+          if (statusText) {
+            setToastMessage(statusText);
+            setTimeout(() => setToastMessage(''), 5000);
+          }
+          prevStatuses.current[order.id!] = order.status;
         }
-        prevStatuses.current[order.id!] = order.status;
       });
+    }, (error) => {
+      console.error("ERRO FIREBASE (Verifique as Regras do Firestore):", error);
     });
 
     return () => unsub();
@@ -283,7 +293,7 @@ export default function DeliveryApp() {
         setCustomerName(authName);
       }
     } catch (err: any) {
-      setAuthError("Erro: Verifique seus dados ou tente novamente.");
+      setAuthError("Erro: Verifique os seus dados ou tente novamente.");
     } finally {
       setAuthInProcess(false);
     }
@@ -291,13 +301,13 @@ export default function DeliveryApp() {
 
   const handleResetPassword = async () => {
     if (!authEmail) {
-      setAuthError("Por favor, digite seu email no campo acima primeiro.");
+      setAuthError("Por favor, digite o seu email no campo acima primeiro.");
       return;
     }
     try {
       setAuthInProcess(true);
       await sendPasswordResetEmail(auth, authEmail);
-      alert("Email de recuperação enviado! Verifique sua caixa de entrada (e a aba de spam).");
+      alert("Email de recuperação enviado! Verifique a sua caixa de entrada (e o separador de spam).");
       setAuthError('');
     } catch (err: any) {
       setAuthError("Erro ao enviar email. Verifique se o endereço está correto.");
@@ -312,7 +322,7 @@ export default function DeliveryApp() {
   };
 
   const openProductModal = (product: Product) => {
-    if (!isOpen) return alert("Estamos fechados no momento! Nosso horário de funcionamento é das 18:30 às 23:30.");
+    if (!isOpen) return alert("Estamos fechados no momento! O nosso horário de funcionamento é das 18:30 às 23:30.");
     setSelectedProduct(product);
     setModalQty(1);
     setRemovedIngredients([]);
@@ -322,6 +332,20 @@ export default function DeliveryApp() {
 
   const closeProductModal = () => {
     setSelectedProduct(null);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.slice(0, 11);
+    
+    let formatted = value;
+    if (value.length > 2) {
+      formatted = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+    }
+    if (value.length > 7) {
+      formatted = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
+    }
+    setCustomerPhone(formatted);
   };
 
   const onCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -410,7 +434,7 @@ export default function DeliveryApp() {
 
   const handleFinishAndWhatsApp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return alert("Você precisa estar logado para fazer um pedido.");
+    if (!user) return alert("Você precisa de estar ligado para fazer um pedido.");
     setLoading(true);
 
     const orderNumber = Math.floor(Math.random() * 9000) + 1000;
@@ -459,8 +483,10 @@ export default function DeliveryApp() {
       const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
 
-      setCheckoutStep('success');
       setCart([]);
+      setCheckoutStep('cart');
+      setIsCartOpen(false);
+      setAppTab('history');
     } catch (error) {
       alert("Erro ao enviar pedido.");
     } finally {
@@ -540,7 +566,7 @@ export default function DeliveryApp() {
     <div className="min-h-screen bg-zinc-950 font-sans pb-24 text-zinc-100 selection:bg-yellow-500/30">
       
       {toastMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-100 bg-green-500 text-white px-5 py-3 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2 animate-in slide-in-from-top fade-in duration-300 border-2 border-green-400">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z- bg-green-500 text-white px-5 py-3 rounded-full font-bold text-sm shadow-2xl flex items-center gap-2 animate-in slide-in-from-top fade-in duration-300 border-2 border-green-400">
           <BellRing size={18} className="animate-bounce" /> {toastMessage}
         </div>
       )}
@@ -592,7 +618,14 @@ export default function DeliveryApp() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredItems.map(item => (
                 <div key={item.id} onClick={() => openProductModal(item)} className={`p-4 rounded-2xl border flex gap-4 transition group relative overflow-hidden cursor-pointer ${isOpen ? 'bg-zinc-900 border-zinc-800 hover:border-zinc-700 active:scale-[0.98]' : 'bg-zinc-900/50 border-zinc-800/50 opacity-70 grayscale'}`}>
-                  <div className="w-28 h-28 shrink-0 rounded-xl overflow-hidden bg-zinc-800"><img src={item.image} alt={item.name} className={`w-full h-full object-cover transition duration-500 ${isOpen ? 'group-hover:scale-110' : ''}`} /></div>
+                  <div className="w-28 h-28 shrink-0 rounded-xl overflow-hidden bg-zinc-800">
+                    <img 
+                      src={item.image} 
+                      alt={item.name} 
+                      className={`w-full h-full object-cover transition duration-500 ${isOpen ? 'group-hover:scale-110' : ''}`} 
+                      onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=60' }}
+                    />
+                  </div>
                   <div className="flex-1 flex flex-col justify-between">
                     <div><h3 className="font-bold text-lg text-zinc-100 leading-tight">{item.name}</h3><p className="text-xs text-zinc-500 line-clamp-2 mt-1 leading-relaxed">{item.desc}</p></div>
                     <div className="flex justify-between items-end mt-3">
@@ -618,10 +651,23 @@ export default function DeliveryApp() {
             <div className="text-center py-20 text-zinc-600">
                <ShoppingBag size={64} className="mx-auto mb-4 opacity-20" />
                <p className="text-lg">Você ainda não tem pedidos.</p>
+               <p className="text-xs mt-2 text-zinc-500">Se fez um pedido e ele não aparece, verifique as regras do Firebase.</p>
                <button onClick={() => setAppTab('menu')} className="mt-4 text-yellow-500 font-bold hover:underline">Ver Cardápio</button>
             </div>
           ) : (
-            myOrders.map(order => (
+            myOrders.map(order => {
+              const getStepStatus = (status: string) => {
+                if (status === 'canceled') return -1;
+                if (status === 'pending') return 0;
+                if (status === 'accepted') return 1;
+                if (status === 'preparing') return 2;
+                if (status === 'dispatched' || status === 'done') return 3;
+                if (status === 'delivered' || status === 'ready') return 4;
+                return 0;
+              };
+              const step = getStepStatus(order.status);
+
+              return (
               <div key={order.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-lg">
                  <div className="p-4 bg-zinc-950/50 border-b border-zinc-800 flex justify-between items-start">
                     <div>
@@ -630,28 +676,30 @@ export default function DeliveryApp() {
                     </div>
                     <div className="text-right">
                       <span className="font-bold text-yellow-500 text-lg block">{formatCurrency(order.total)}</span>
-                      {order.status === 'pending' && <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-1 rounded font-bold uppercase">Aguardando Aceite</span>}
-                      {order.status === 'preparing' && <span className="text-[10px] bg-yellow-900/30 border border-yellow-500/30 text-yellow-500 px-2 py-1 rounded font-bold uppercase animate-pulse">Preparando</span>}
-                      {order.status === 'done' && <span className="text-[10px] bg-blue-900/30 border border-blue-500/30 text-blue-400 px-2 py-1 rounded font-bold uppercase animate-pulse">Saiu / Pronto</span>}
-                      {order.status === 'ready' && <span className="text-[10px] bg-green-900/30 border border-green-500/30 text-green-500 px-2 py-1 rounded font-bold uppercase">Entregue</span>}
+                      {step === -1 && <span className="text-[10px] bg-red-900/30 text-red-500 border border-red-500/30 px-2 py-1 rounded font-bold uppercase">Cancelado</span>}
+                      {step === 0 && <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-1 rounded font-bold uppercase">Aguardando Loja</span>}
+                      {step === 1 && <span className="text-[10px] bg-yellow-900/30 text-yellow-500 border border-yellow-500/30 px-2 py-1 rounded font-bold uppercase animate-pulse">Aceite</span>}
+                      {step === 2 && <span className="text-[10px] bg-orange-900/30 text-orange-400 border border-orange-500/30 px-2 py-1 rounded font-bold uppercase animate-pulse">Em Preparo</span>}
+                      {step === 3 && <span className="text-[10px] bg-blue-900/30 text-blue-400 border border-blue-500/30 px-2 py-1 rounded font-bold uppercase animate-pulse">Saiu p/ Entrega</span>}
+                      {step >= 4 && <span className="text-[10px] bg-green-900/30 text-green-500 border border-green-500/30 px-2 py-1 rounded font-bold uppercase">Entregue</span>}
                     </div>
                  </div>
                  
-                 {order.status !== 'ready' && (
+                 {step >= 0 && step < 4 && (
                     <div className="px-6 py-4 bg-zinc-900/80 border-b border-zinc-800 flex justify-between items-center relative">
                        <div className="absolute top-1/2 left-10 right-10 h-0.5 bg-zinc-800 -translate-y-1/2 z-0"></div>
                        
                        <div className="relative z-10 flex flex-col items-center gap-1">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${['pending', 'preparing', 'done', 'ready'].includes(order.status) ? 'bg-yellow-600 border-yellow-500 text-black' : 'bg-zinc-900 border-zinc-700 text-zinc-600'}`}><Clock size={14}/></div>
-                          <span className="text-[10px] font-bold text-zinc-400">Aceite</span>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step >= 1 ? 'bg-yellow-600 border-yellow-500 text-black' : 'bg-zinc-900 border-zinc-700 text-zinc-600'}`}><CheckCircle size={14}/></div>
+                          <span className={`text-[10px] font-bold ${step >= 1 ? 'text-yellow-500' : 'text-zinc-500'}`}>Aceite</span>
                        </div>
                        <div className="relative z-10 flex flex-col items-center gap-1">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${['preparing', 'done', 'ready'].includes(order.status) ? 'bg-yellow-600 border-yellow-500 text-black' : 'bg-zinc-900 border-zinc-700 text-zinc-600'}`}><ChefHat size={14}/></div>
-                          <span className="text-[10px] font-bold text-zinc-400">Preparo</span>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step >= 2 ? 'bg-orange-500 border-orange-400 text-black' : 'bg-zinc-900 border-zinc-700 text-zinc-600'}`}><ChefHat size={14}/></div>
+                          <span className={`text-[10px] font-bold ${step >= 2 ? 'text-orange-400' : 'text-zinc-500'}`}>Preparo</span>
                        </div>
                        <div className="relative z-10 flex flex-col items-center gap-1">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${['done', 'ready'].includes(order.status) ? 'bg-blue-600 border-blue-500 text-white' : 'bg-zinc-900 border-zinc-700 text-zinc-600'}`}><Bike size={14}/></div>
-                          <span className="text-[10px] font-bold text-zinc-400">Entrega</span>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step >= 3 ? 'bg-blue-600 border-blue-500 text-white' : 'bg-zinc-900 border-zinc-700 text-zinc-600'}`}><Bike size={14}/></div>
+                          <span className={`text-[10px] font-bold ${step >= 3 ? 'text-blue-400' : 'text-zinc-500'}`}>Entrega</span>
                        </div>
                     </div>
                  )}
@@ -679,7 +727,7 @@ export default function DeliveryApp() {
                     </button>
                  </div>
               </div>
-            ))
+            )})
           )}
         </main>
       )}
@@ -799,43 +847,54 @@ export default function DeliveryApp() {
                   ) : (
                     <form id="checkout-form" onSubmit={handleFinishAndWhatsApp} className="space-y-5">
                       <div><label className="block text-xs font-bold text-zinc-500 uppercase mb-1 ml-1">Seu Nome</label><div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-4 focus-within:border-yellow-500 transition"><User size={18} className="text-zinc-500" /><input required type="text" className="w-full bg-transparent py-4 pl-3 outline-none text-white placeholder-zinc-700" placeholder="Como te chamamos?" value={customerName} onChange={e => setCustomerName(e.target.value)} /></div></div>
-                      <div><label className="block text-xs font-bold text-zinc-500 uppercase mb-1 ml-1">Telefone / Whats</label><div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-4 focus-within:border-green-500 transition"><Phone size={18} className="text-zinc-500" /><input required type="tel" className="w-full bg-transparent py-4 pl-3 outline-none text-white placeholder-zinc-700" placeholder="(00) 00000-0000" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} /></div></div>
+                      <div><label className="block text-xs font-bold text-zinc-500 uppercase mb-1 ml-1">Telefone / Whats</label><div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-4 focus-within:border-green-500 transition"><Phone size={18} className="text-zinc-500" /><input required type="tel" className="w-full bg-transparent py-4 pl-3 outline-none text-white placeholder-zinc-700" placeholder="(00) 00000-0000" value={customerPhone} onChange={handlePhoneChange} maxLength={15} /></div></div>
                       
-                      <div>
-                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1 ml-1">Endereço de Entrega *</label>
-                        <div className="space-y-3">
+                      <div className="bg-zinc-950/50 p-4 rounded-xl border border-zinc-800/50">
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-3 border-b border-zinc-800 pb-2">Endereço de Entrega</label>
+                        <div className="space-y-4">
                           <div className="flex gap-3">
                             <div className="relative flex-1">
+                              <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1 ml-1">CEP *</label>
                               <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-4 focus-within:border-yellow-500 transition">
                                 <MapPin size={18} className="text-zinc-500 mr-2 shrink-0" />
-                                <input required type="text" className="w-full bg-transparent py-3.5 outline-none text-white placeholder-zinc-700" placeholder="CEP (Apenas Números)" value={cep} onChange={onCepChange} maxLength={9} />
+                                <input required type="text" className="w-full bg-transparent py-3 outline-none text-white placeholder-zinc-700" placeholder="00000-000" value={cep} onChange={onCepChange} maxLength={9} />
                               </div>
-                              {fetchingCep && <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>}
+                              {fetchingCep && <div className="absolute right-4 top-8 w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>}
                             </div>
                             <div className="w-1/3">
+                              <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1 ml-1">Número *</label>
                               <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-4 focus-within:border-yellow-500 transition">
-                                <input required id="addressNumber" type="text" className="w-full bg-transparent py-3.5 outline-none text-white placeholder-zinc-700" placeholder="Nº" value={number} onChange={e => setNumber(e.target.value)} />
+                                <input required id="addressNumber" type="text" className="w-full bg-transparent py-3 outline-none text-white placeholder-zinc-700" placeholder="Nº" value={number} onChange={e => setNumber(e.target.value)} />
                               </div>
                             </div>
                           </div>
                           
-                          <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-4 focus-within:border-yellow-500 transition">
-                            <input required type="text" className="w-full bg-transparent py-3.5 outline-none text-white placeholder-zinc-700" placeholder="Sua Rua / Avenida" value={street} onChange={e => setStreet(e.target.value)} />
+                          <div>
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1 ml-1">Rua / Avenida *</label>
+                            <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-4 focus-within:border-yellow-500 transition">
+                              <input required type="text" className="w-full bg-transparent py-3 outline-none text-white placeholder-zinc-700" placeholder="Ex: Rua das Flores" value={street} onChange={e => setStreet(e.target.value)} />
+                            </div>
                           </div>
                           
                           <div className="flex gap-3">
-                            <div className="flex-1 flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-4 focus-within:border-yellow-500 transition">
-                              <input required type="text" className="w-full bg-transparent py-3.5 outline-none text-white placeholder-zinc-700" placeholder="Bairro" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} />
+                            <div className="flex-1">
+                              <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1 ml-1">Bairro *</label>
+                              <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-4 focus-within:border-yellow-500 transition">
+                                <input required type="text" className="w-full bg-transparent py-3 outline-none text-white placeholder-zinc-700" placeholder="Ex: Centro" value={neighborhood} onChange={e => setNeighborhood(e.target.value)} />
+                              </div>
                             </div>
-                            <div className="flex-1 flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-4 focus-within:border-yellow-500 transition">
-                              <input type="text" className="w-full bg-transparent py-3.5 outline-none text-white placeholder-zinc-700" placeholder="Complemento" value={complement} onChange={e => setComplement(e.target.value)} />
+                            <div className="flex-1">
+                              <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1 ml-1">Complemento</label>
+                              <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl px-4 focus-within:border-yellow-500 transition">
+                                <input type="text" className="w-full bg-transparent py-3 outline-none text-white placeholder-zinc-700" placeholder="Apto, Bloco..." value={complement} onChange={e => setComplement(e.target.value)} />
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
 
                       <div><label className="block text-xs font-bold text-zinc-500 uppercase mb-1 ml-1">Pagamento</label><div className="grid grid-cols-3 gap-3">{['pix', 'dinheiro', 'cartão'].map(method => (<button key={method} type="button" onClick={() => setPaymentMethod(method)} className={`py-3 rounded-xl text-sm font-bold capitalize border transition ${paymentMethod === method ? 'bg-yellow-600 text-black border-yellow-500 shadow-lg' : 'bg-zinc-950 text-zinc-500 border-zinc-800 hover:border-zinc-700'}`}>{method}</button>))}</div></div>
-                      <div><label className="block text-xs font-bold text-zinc-500 uppercase mb-1 ml-1">Observações Gerais</label><textarea rows={2} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white placeholder-zinc-700 outline-none resize-none focus:border-yellow-500 transition" placeholder="Troco para 50, campainha não funciona..." value={orderNote} onChange={e => setOrderNote(e.target.value)} /></div>
+                      <div><label className="block text-xs font-bold text-zinc-500 uppercase mb-1 ml-1">Observações Gerais</label><textarea rows={2} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white placeholder-zinc-700 outline-none resize-none focus:border-yellow-500 transition" placeholder="Troco para 50, a campainha não funciona..." value={orderNote} onChange={e => setOrderNote(e.target.value)} /></div>
                     </form>
                   )}
                 </>
@@ -850,7 +909,16 @@ export default function DeliveryApp() {
                 {checkoutStep === 'cart' ? (
                   <button onClick={() => setCheckoutStep('form')} className="w-full bg-yellow-600 text-black font-bold py-4 rounded-xl hover:bg-yellow-500 transition flex items-center justify-center gap-2 shadow-lg shadow-yellow-600/10 active:scale-95 text-lg">Continuar para Entrega</button>
                 ) : (
-                  <button type="submit" form="checkout-form" disabled={loading} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl hover:bg-green-500 transition flex items-center justify-center gap-3 shadow-lg shadow-green-600/20 active:scale-95 text-lg disabled:opacity-50 disabled:scale-100">{loading ? 'Processando...' : <><MessageCircle size={24} /> Finalizar e Enviar no WhatsApp</>}</button>
+                  <button type="submit" form="checkout-form" disabled={loading} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl hover:bg-green-500 transition flex items-center justify-center gap-3 shadow-lg shadow-green-600/20 active:scale-95 text-lg disabled:opacity-50 disabled:scale-100">
+                    {loading ? 'Processando...' : (
+                      <>
+                        <svg viewBox="0 0 24 24" width={24} height={24} fill="currentColor">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.305-.885-.653-1.482-1.459-1.656-1.756-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.405-.272.33-1.04 1.015-1.04 2.469 0 1.453 1.065 2.861 1.213 3.059.149.198 2.081 3.181 5.042 4.453.704.302 1.253.483 1.681.618.707.224 1.349.193 1.848.117.562-.086 1.758-.717 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+                        </svg>
+                        Finalizar e Enviar no WhatsApp
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
             )}
